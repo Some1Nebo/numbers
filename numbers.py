@@ -19,11 +19,10 @@ if __name__ == "__main__":
     raw_input("Great! Just press enter when you ready.")
 
     correct = 0
-    i = 1
     wrong_answers = []
     start = time.time()
-    for rep in workout:
-        print("({0}) {1}".format(i, rep))
+    for i, rep in enumerate(workout):
+        print("({0}) {1}".format(i + 1, rep))
 
         try:
             answer = int(raw_input())
@@ -35,8 +34,6 @@ if __name__ == "__main__":
 
         except ValueError:
             wrong_answers.append(str(rep))
-
-        i += 1
 
     end = time.time()
 

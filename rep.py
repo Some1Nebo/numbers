@@ -33,7 +33,7 @@ class Rep:
         except SyntaxError:
             raise ValueError("Wrong format of the rep: {0}.".format(rep_str))
 
-    def get_answer(self):
+    def answer(self):
         return self._answer
 
     def __str__(self):
@@ -61,7 +61,7 @@ class Rep:
             Mode.HARD: get_randomly_placed_randoms_with_n_digits([range(4, 6), [4]])
         }[mode]
 
-        return Rep._gen_binary_operation(operands, "+")
+        return Rep._gen_binary_rep(operands, "+")
 
     @staticmethod
     def _gen_subtraction(mode):
@@ -71,7 +71,7 @@ class Rep:
             Mode.HARD: get_randomly_placed_randoms_with_n_digits([range(4, 6), [4]])
         }[mode]
 
-        return Rep._gen_binary_operation(operands, "-")
+        return Rep._gen_binary_rep(operands, "-")
 
     @staticmethod
     def _gen_multiplication(mode):
@@ -81,7 +81,7 @@ class Rep:
             Mode.HARD: get_randomly_placed_randoms_with_n_digits([[3], range(2, 4)])
         }[mode]
 
-        return Rep._gen_binary_operation(operands, "*")
+        return Rep._gen_binary_rep(operands, "*")
 
     @staticmethod
     def _gen_division(mode):
@@ -91,8 +91,8 @@ class Rep:
             Mode.HARD: get_randomly_placed_randoms_with_n_digits([range(2, 4), [3]])
         }[mode]
 
-        return Rep._gen_binary_operation([operands[0] * operands[1], operands[0]], "/")
+        return Rep._gen_binary_rep([operands[0] * operands[1], operands[0]], "/")
 
     @staticmethod
-    def _gen_binary_operation(operands, operation):
-        return "{1} {0} {2}".format(operation, operands[0], operands[1])
+    def _gen_binary_rep(operands, operation):
+        return Rep("{1} {0} {2}".format(operation, operands[0], operands[1]))

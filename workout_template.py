@@ -1,22 +1,4 @@
-class Mode:
-    SIMPLE = "s"
-    MEDIUM = "m"
-    HARD = "h"
-
-    @staticmethod
-    def all():
-        return {Mode.SIMPLE, Mode.MEDIUM, Mode.HARD}
-
-
-class RepType:
-    ADDITION = "a"
-    SUBTRACTION = "s"
-    MULTIPLICATION = "m"
-    DIVISION = "d"
-
-    @staticmethod
-    def all():
-        return {RepType.ADDITION, RepType.SUBTRACTION, RepType.MULTIPLICATION, RepType.DIVISION}
+from rep import RepType, Mode
 
 
 class WorkoutTemplate:

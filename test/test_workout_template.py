@@ -7,20 +7,20 @@ class WorkoutTemplateParseTests(unittest.TestCase):
     def test_happy_path(self):
         template = WorkoutTemplate.parse("s-a,m-10")
 
-        self.assertEquals(template.mode(), Mode.SIMPLE)
-        self.assertEquals(template.rep_types(), {RepType.ADDITION,
+        self.assertEqual(template.mode(), Mode.SIMPLE)
+        self.assertEqual(template.rep_types(), {RepType.ADDITION,
                                                  RepType.MULTIPLICATION})
-        self.assertEquals(template.num_of_reps(), 10)
+        self.assertEqual(template.num_of_reps(), 10)
 
     def test_valid_format_with_wild_card(self):
         template = WorkoutTemplate.parse("s-a,*-10")
 
-        self.assertEquals(template.mode(), Mode.SIMPLE)
-        self.assertEquals(template.rep_types(), {RepType.ADDITION,
+        self.assertEqual(template.mode(), Mode.SIMPLE)
+        self.assertEqual(template.rep_types(), {RepType.ADDITION,
                                                  RepType.MULTIPLICATION,
                                                  RepType.DIVISION,
                                                  RepType.SUBTRACTION})
-        self.assertEquals(template.num_of_reps(), 10)
+        self.assertEqual(template.num_of_reps(), 10)
 
     def test_throws_if_wrong_format(self):
         self.assertRaises(ValueError, WorkoutTemplate.parse, "s-a,m:10")

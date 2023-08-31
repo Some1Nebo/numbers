@@ -8,7 +8,7 @@ if __name__ == "__main__":
     default_workout = 'm-*-10'
 
     print("Hi! What type of a workout are you after? Default: {0}.".format(default_workout))
-    workout_str = raw_input()
+    workout_str = input()
 
     if not workout_str or workout_str.isspace():
         workout_str = default_workout
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     workout_template = WorkoutTemplate.parse(workout_str)
     workout = Workout.generate(workout_template)
 
-    raw_input("Great! Just press enter when you ready.")
+    input("Great! Just press enter when you ready.")
 
     correct = 0
     wrong_answers = []
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         print("({0}) {1}".format(i + 1, rep))
 
         try:
-            answer = int(raw_input())
+            answer = int(input())
 
             if answer == rep.answer():
                 correct += 1
@@ -43,4 +43,3 @@ if __name__ == "__main__":
     if any(wrong_answers):
         print("Wrong answers:")
         print("\n".join(wrong_answers))
-

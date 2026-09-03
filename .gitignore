@@ -78,6 +78,8 @@ var/
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# ...except ours: hand-written build definition, not a generated artifact
+!menubar.spec
 
 # Installer logs
 pip-log.txt
@@ -109,3 +111,9 @@ target/
 # logs
 logs/
 log/
+
+# Local Python environments
+.venv/
+
+# Icon build intermediates (make_icons.py)
+app_icon.iconset/

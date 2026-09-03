@@ -1,0 +1,9 @@
+{
+    "CFBundleDisplayName": "Numbers Workout",
+    "CFBundleName": "Numbers Workout",
+    "CFBundleIdentifier": "com.sergey.numbers-workout",
+    "CFBundleShortVersionString": "2.0",
+    "CFBundleVersion": "2.0",
+    "LSUIElement": true,
+    "NSHighResolutionCapable": true
+}

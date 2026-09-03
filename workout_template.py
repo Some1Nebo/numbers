@@ -4,13 +4,18 @@ from rep import RepType, Mode
 class WorkoutTemplate:
     WILDCARD = "*"
 
-    def __init__(self, mode, rep_types, num_of_reps):
+    def __init__(self, mode, rep_types, num_of_reps, template_str=None):
         self._mode = mode
         self._rep_types = rep_types
         self._num_of_reps = num_of_reps
+        self._template_str = template_str or "{0}-{1}-{2}".format(
+            mode, ",".join(sorted(rep_types)), num_of_reps)
 
     def mode(self):
         return self._mode
+
+    def template_str(self):
+        return self._template_str
 
     def rep_types(self):
         return self._rep_types
@@ -29,13 +34,17 @@ class WorkoutTemplate:
             WorkoutTemplate object
         """
 
-        mode_str, rep_types_str, num_of_reps_str = template_str.split("-")
+        parts = template_str.split("-")
+        if len(parts) != 3:
+            raise ValueError(
+                "Expected format \"{{mode}}-{{rep_types}}-{{num_of_reps}}\", got: {0}".format(template_str))
+        mode_str, rep_types_str, num_of_reps_str = parts
 
         mode = WorkoutTemplate._parse_mode(mode_str)
         rep_types = WorkoutTemplate._parse_rep_types(rep_types_str)
         num_of_reps = WorkoutTemplate._parse_num_of_reps(num_of_reps_str)
 
-        return WorkoutTemplate(mode, rep_types, num_of_reps)
+        return WorkoutTemplate(mode, rep_types, num_of_reps, template_str=template_str)
 
     @staticmethod
     def _parse_mode(mode_str):
@@ -59,4 +68,7 @@ class WorkoutTemplate:
 
     @staticmethod
     def _parse_num_of_reps(num_of_reps_str):
-        return int(num_of_reps_str)
+        num_of_reps = int(num_of_reps_str)
+        if num_of_reps < 1:
+            raise ValueError("Number of reps must be a positive integer.")
+        return num_of_reps

@@ -11,7 +11,7 @@ class Workout:
         return iter(self._reps)
 
     def __str__(self):
-        return "\n".join(self._reps)
+        return "\n".join(str(rep) for rep in self._reps)
 
     @staticmethod
     def generate(workout_template):

@@ -35,6 +35,14 @@ class WorkoutTemplateParseTests(unittest.TestCase):
         self.assertRaises(ValueError, WorkoutTemplate.parse, "s-a,m-not_int")
         self.assertRaises(ValueError, WorkoutTemplate.parse, "s-a,m-10~")
 
+    def test_throws_if_num_of_reps_not_positive(self):
+        self.assertRaises(ValueError, WorkoutTemplate.parse, "s-a,m-0")
+        self.assertRaises(ValueError, WorkoutTemplate.parse, "s-a,m--5")
+
+    def test_template_str_is_kept(self):
+        template = WorkoutTemplate.parse("m-*-10")
+        self.assertEqual(template.template_str(), "m-*-10")
+
 
 if __name__ == "__main__":
     unittest.main()

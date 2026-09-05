@@ -16,6 +16,9 @@ from collections import namedtuple
 from datetime import datetime
 
 from runner import matches_answer
+from workout_template import WorkoutTemplate
+
+DEFAULT_TEMPLATE = "m-*-10"
 
 # Read-only summary of a sessions row, as returned by SessionStore.recent_sessions.
 SessionSummary = namedtuple(
@@ -34,6 +37,11 @@ def default_db_path():
 class SessionStore:
 
     _SCHEMA = """
+    CREATE TABLE IF NOT EXISTS preferences (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
         id             INTEGER PRIMARY KEY AUTOINCREMENT,
         started_at     TEXT    NOT NULL,
@@ -75,6 +83,13 @@ class SessionStore:
 
     # ------------------------------------------------------------------- write
 
+    def remember_template(self, template):
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO preferences (key, value) VALUES ('last_template', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (template.template_str(),))
+
     def record_session(self, result):
         """Persist a SessionResult (see runner.py). Returns the new session id."""
         template = result.template
@@ -83,37 +98,37 @@ class SessionStore:
         correct = result.correct
         score_pct = correct * 100.0 / completed if completed else None
 
-        cur = self._conn.execute(
-            """INSERT INTO sessions
-               (started_at, finished_at, duration_sec, template, mode, rep_types,
-                num_reps, completed_reps, correct, wrong, score_pct)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                _iso(result.started_at),
-                _iso(result.finished_at),
-                result.duration.total_seconds(),
-                template.template_str(),
-                template.mode(),
-                ",".join(sorted(template.rep_types())),
-                template.num_of_reps(),
-                completed,
-                correct,
-                result.wrong,
-                score_pct,
-            ),
-        )
-        session_id = cur.lastrowid
+        with self._conn:
+            cur = self._conn.execute(
+                """INSERT INTO sessions
+                   (started_at, finished_at, duration_sec, template, mode, rep_types,
+                    num_reps, completed_reps, correct, wrong, score_pct)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    _iso(result.started_at),
+                    _iso(result.finished_at),
+                    result.duration.total_seconds(),
+                    template.template_str(),
+                    template.mode(),
+                    ",".join(sorted(template.rep_types())),
+                    template.num_of_reps(),
+                    completed,
+                    correct,
+                    result.wrong,
+                    score_pct,
+                ),
+            )
+            session_id = cur.lastrowid
 
-        self._conn.executemany(
-            """INSERT INTO session_reps
-               (session_id, seq, rep, given_answer, correct_answer, was_correct)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            [
-                (session_id, i, str(rep), answer, rep.answer(), int(matches_answer(rep, answer)))
-                for i, (rep, answer) in enumerate(zip(reps, result.answers), start=1)
-            ],
-        )
-        self._conn.commit()
+            self._conn.executemany(
+                """INSERT INTO session_reps
+                   (session_id, seq, rep, given_answer, correct_answer, was_correct)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                [
+                    (session_id, i, str(rep), answer, rep.answer(), int(matches_answer(rep, answer)))
+                    for i, (rep, answer) in enumerate(zip(reps, result.answers), start=1)
+                ],
+            )
         return session_id
 
     def clear_history(self):
@@ -122,6 +137,16 @@ class SessionStore:
         self._conn.commit()
 
     # -------------------------------------------------------------------- read
+
+    def last_template(self):
+        row = self._conn.execute(
+            "SELECT value FROM preferences WHERE key = 'last_template'").fetchone()
+        if row is not None:
+            try:
+                return WorkoutTemplate.parse(row[0])
+            except (ValueError, TypeError):
+                pass
+        return WorkoutTemplate.parse(DEFAULT_TEMPLATE)
 
     def recent_sessions(self, limit=5):
         """Most recent sessions, newest first, as SessionSummary namedtuples."""

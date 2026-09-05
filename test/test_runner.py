@@ -1,8 +1,55 @@
 import unittest
+from unittest.mock import patch
 
 from rep import Rep
 from runner import matches_answer, run_workout
 from workout_template import WorkoutTemplate
+from workout import Workout
+import runner
+
+
+class WorkoutSessionTests(unittest.TestCase):
+
+    def session(self):
+        self.assertTrue(hasattr(runner, "WorkoutSession"), "An event-driven session is needed")
+        return runner.WorkoutSession(
+            WorkoutTemplate.parse("s-a-2"), Workout([Rep("10 + 2"), Rep("20 + 3")]))
+
+    def test_progression_and_final_score_keep_raw_answers(self):
+        session = self.session()
+        self.assertEqual(session.current_rep.answer(), 12)
+        session.submit("12")
+        self.assertFalse(session.is_complete)
+        self.assertEqual(session.current_rep.answer(), 23)
+        session.submit("24")
+        self.assertTrue(session.is_complete)
+        self.assertIsNone(session.current_rep)
+        result = session.finish()
+        self.assertEqual(result.answers, ["12", "24"])
+        self.assertEqual((result.correct, result.wrong), (1, 1))
+
+    def test_aborting_keeps_partial_snapshot_and_seals_session(self):
+        session = self.session()
+        session.submit("12")
+        result = session.finish()
+        self.assertEqual(result.completed, 1)
+        self.assertIs(session.finish(), result)
+        with self.assertRaises(RuntimeError):
+            session.submit("23")
+
+    def test_extra_submission_cannot_overwrite_completed_workout(self):
+        session = self.session()
+        session.submit("12")
+        session.submit("23")
+        with self.assertRaises(RuntimeError):
+            session.submit("99")
+        self.assertEqual(session.finish().answers, ["12", "23"])
+
+    def test_duration_uses_monotonic_time_and_stops_at_finish(self):
+        with patch("runner.monotonic", side_effect=[100.0, 107.5], create=True):
+            session = self.session()
+            result = session.finish()
+        self.assertEqual(result.duration.total_seconds(), 7.5)
 
 
 class MatchesAnswerTests(unittest.TestCase):

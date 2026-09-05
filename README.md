@@ -1,9 +1,9 @@
 # Numbers Workout
 
-Mental-arithmetic trainer: short sessions of random arithmetic reps (addition,
-subtraction, multiplication, division) in three difficulty modes.
+A little mental gymnastics: short sessions of random arithmetic questions
+(addition, subtraction, multiplication, division) in three difficulty modes.
 
-Two front-ends share the same core (`runner.py`) and both save every session
+Two front-ends share the same core (`runner.py`) and save completed workouts
 to a local SQLite database:
 
 | Front-end | How to run |
@@ -11,7 +11,37 @@ to a local SQLite database:
 | **Menu bar app** (tray icon, no Dock entry) | `~/Applications/Numbers Workout.app` (auto-starts at login), or `.venv/bin/python menubar.py` |
 | **Console** | `.venv/bin/python console_app.py` |
 
-## Workout template syntax
+## Using the Mac app
+
+- **Start Workout** starts immediately with your last settings (initially medium,
+  all operations, 10 questions). During a workout this becomes **Return to Workout**.
+- **Custom Workout…** opens native difficulty and operation controls and an editable
+  question count (1–1,000). Your choices are remembered when you start.
+- One window stays in place for the whole workout. Type an integer and press
+  **Return** or click **Next**. Negative answers are supported. Standard Mac
+  selection, copy, paste, and undo shortcuts work in text fields.
+- There is no correctness feedback or running timer during the workout. Results
+  show your score, elapsed time, and mistakes with your answer and the correct answer.
+- **Do Another** starts a fresh workout with the same settings. **Done** closes the
+  window; the app stays in the menu bar.
+- **Help** opens a matching native window without interrupting an active workout.
+- **History…** shows all-time counts and the latest 30 sessions. **Clear History…**
+  lives inside that window and requires confirmation; workout settings are retained.
+- Ending an unfinished workout requires confirmation and does not save it.
+  A failed save keeps completed results available for retry.
+
+The window follows macOS light/dark appearance. It comes forward when opened and
+lets you switch freely to other apps. With a window active, **⌘N** starts your usual
+workout, **⇧⌘N** opens custom setup, and **⌘W** closes the window (or asks to end a
+workout). New-workout actions return to an already active workout.
+
+To launch directly into setup from source:
+
+```bash
+.venv/bin/python menubar.py --setup
+```
+
+## Console workout template syntax
 
 `{mode}-{rep_types}-{num_of_reps}`, e.g. `m-*-10`:
 
@@ -29,9 +59,12 @@ SQLite at `~/Library/Application Support/numbers-workout/numbers.db`
 
 - `sessions` — one row per session: timestamps, duration, template, correct/wrong counts, score
 - `session_reps` — one row per rep: the expression, your answer, the correct answer, was it correct
+- `preferences` — remembered Mac workout settings, separate from session history
 
-An analytics layer can be built directly on top of these two tables.
-The menu bar app shows *Recent Sessions* and *All-time Stats* from them.
+Existing databases are upgraded additively, without rewriting sessions or answers.
+Each workout and its answers are saved in one transaction. Timing uses a monotonic
+clock for duration and wall-clock timestamps for history. Per-question timing is
+not recorded.
 
 ## Setup (fresh machine)
 
@@ -83,15 +116,36 @@ rm ~/Library/LaunchAgents/com.sergey.numbers-workout.plist
 .venv/bin/python -m unittest discover -s test -v
 ```
 
+The AppKit integration checks are opt-in because they open real windows and require
+a logged-in Mac graphical session. All their data goes to temporary databases:
+
+```bash
+NUMBERS_UI_TESTS=1 .venv/bin/python -m unittest discover -s test -v
+```
+
+For manual visual checks with disposable data (no personal history or system
+appearance changes):
+
+```bash
+.venv/bin/python test/preview_ui.py --appearance light --scene results
+.venv/bin/python test/preview_ui.py --appearance dark --scene setup
+```
+
+Scenes: `setup`, `workout`, `results`, `history`, `help`. Results include 20 deliberately
+incorrect answers for checking the scrollable review.
+
 ## Layout
 
-- `rep.py` — rep (expression) generation per mode/type
+- `rep.py` — structured integer arithmetic and generation per mode/type; no `eval`
 - `workout_template.py` — template parsing
 - `workout.py` — workout (list of reps) generation
-- `runner.py` — shared session loop + `SessionResult`
+- `runner.py` — event-driven `WorkoutSession`, `SessionResult`, and synchronous console adapter
 - `storage.py` — SQLite `SessionStore`
 - `console_app.py` — console front-end (was `numbers.py`; renamed because
   `numbers.py` shadowed the stdlib `numbers` module and broke third-party
   imports like Pillow)
-- `menubar.py` — menu bar front-end (rumps)
+- `menubar.py` — menu bar, app lifetime and service ownership (rumps)
+- `workout_window.py` — native setup, workout, results, history and confirmation flows
+- `help_window.py` — independent Help window using the same header and styling
+- `native_ui.py` — native controls, layout helpers, presentation formatting and editing menu
 - `menubar.spec`, `make_icons.py`, `info.plist.json`, `install_autostart.sh` — packaging

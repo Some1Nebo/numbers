@@ -9,21 +9,16 @@ The installed app is a PyInstaller-built bundle (see README.md).
 import functools
 import os
 import sys
-from datetime import datetime
 
 import rumps
 from AppKit import NSAlert, NSApplication, NSImage
 
-from runner import run_workout
 from storage import SessionStore
-from workout_template import WorkoutTemplate
+from help_window import HelpWindow
+from workout_window import WorkoutWindow
+from native_ui import template_description
 
 APP_NAME = "Numbers Workout"
-DEFAULT_TEMPLATE = "m-*-10"
-_OK_BUTTON = 1  # rumps Response.clicked value for the OK button
-# Plain hyphens: box-drawing characters (─) trigger a broken font fallback
-# inside NSAlert informative text (verified by offscreen rendering).
-_SEPARATOR = "-" * 30
 
 
 def _resource_path(name):
@@ -81,21 +76,6 @@ def _alert(title, message, cancel=False):
     return alert.runModal() % 999
 
 
-def _run_window(window):
-    """Run a rumps.Window, activating the app first (see _activate_app)."""
-    _activate_app()
-    _float_window(window._alert.window())  # rumps keeps the NSAlert in _alert
-    return window.run()
-
-
-def _format_time(iso_str):
-    """'2026-09-03T17:45:12+03:00' -> 'Sep 03 17:45'."""
-    try:
-        return datetime.fromisoformat(iso_str).strftime("%b %d %H:%M")
-    except ValueError:
-        return iso_str
-
-
 def _guarded(method):
     """Menu callbacks must not propagate exceptions into the app main loop."""
 
@@ -117,7 +97,7 @@ class NumbersWorkoutApp(rumps.App):
             APP_NAME,
             icon=_resource_path("menubar_icon.png"),
             template=True,
-            quit_button="Quit",
+            quit_button=None,
         )
         # ...and upgrade to a native SF Symbol when one is available. The internal
         # NSApp delegate reads _icon_nsimage when it builds the status bar in run(),
@@ -133,159 +113,67 @@ class NumbersWorkoutApp(rumps.App):
                   file=sys.stderr)
 
         self._store = SessionStore()
-        self._current_template = None
-
-        self.start_item = rumps.MenuItem("Start Workout…", callback=self.start_workout)
-        self.recent_item = rumps.MenuItem("Recent Sessions", callback=self.show_recent)
-        self.stats_item = rumps.MenuItem("All-time Stats", callback=self.show_stats)
-        self.help_item = rumps.MenuItem("Help", callback=self.show_help)
-        self.clear_item = rumps.MenuItem("Clear History", callback=self.clear_history)
-
+        self._window = WorkoutWindow.alloc().initWithStore_(self._store)
+        self._help_window = None
+        self._window.on_change = self._update_menu
+        self.start_item = rumps.MenuItem("Start Workout", callback=self.start_workout)
+        self.detail_item = rumps.MenuItem("")
+        self.custom_item = rumps.MenuItem("Custom Workout…", callback=self.custom_workout)
+        self.history_item = rumps.MenuItem("History…", callback=self.show_history)
         self.menu = [
-            self.start_item, None,
-            self.recent_item, self.stats_item,
-            None,
-            self.help_item, self.clear_item,
+            self.start_item, self.detail_item, self.custom_item, None,
+            self.history_item, None,
+            rumps.MenuItem("Help", callback=self.show_help),
+            rumps.MenuItem("Quit Numbers", callback=self.quit_app),
         ]
+        self._update_menu()
 
-    # ------------------------------------------------------------------- menu
-
-    @_guarded
-    def start_workout(self, _sender):
-        if self._current_template is not None:  # defensive: the item is disabled during a session
-            _alert("Workout in progress", "Please finish or cancel the current workout.")
-            return
-
-        tpl_window = rumps.Window(
-            title=APP_NAME,
-            message="Workout template (default {0}), or press Cancel:".format(DEFAULT_TEMPLATE),
-            default_text=DEFAULT_TEMPLATE,
-            cancel=True,
-            dimensions=(280, 24),
-        )
-        response = _run_window(tpl_window)
-        if response.clicked != _OK_BUTTON:
-            return
-
-        template_str = (response.text or "").strip() or DEFAULT_TEMPLATE
-        try:
-            template = WorkoutTemplate.parse(template_str)
-        except ValueError as exc:
-            _alert("Workout template", "Could not read the template: {0}".format(exc))
-            return
-
-        self._set_busy(True)
-        self._current_template = template
-        try:
-            result = run_workout(template, self._ask_answer)
-        finally:
-            self._current_template = None
-            self._set_busy(False)
-
-        if result.completed < result.template.num_of_reps():
-            _alert("Workout cancelled", "Nothing was saved.")
-            return
-
-        session_id = self._store.record_session(result)
-        self._show_summary(result, session_id)
-
-    def _show_summary(self, result, session_id):
-        """End-of-session summary, mirroring the console output."""
-        score_pct = result.correct * 100.0 / result.completed if result.completed else 0.0
-
-        lines = [
-            "{0}/{1} correct  ({2:.0f}%)".format(result.correct, result.completed, score_pct),
-            "Time: {0:.1f}s".format(result.duration.total_seconds()),
-        ]
-        if result.wrong_reps:
-            lines += ["", "Wrong answers:"] + result.wrong_reps
-        lines += ["", "Saved as session #{0}".format(session_id)]
-
-        _alert("Workout finished", "\n".join(lines))
-
-    def _ask_answer(self, index, rep_str):
-        total = self._current_template.num_of_reps()
-        window = rumps.Window(
-            title="{0} - {1} of {2}".format(APP_NAME, index, total),
-            message="What is:  {0}  ?".format(rep_str),
-            cancel=True,
-            dimensions=(280, 24),
-        )
-        response = _run_window(window)
-        if response.clicked != _OK_BUTTON:
-            return None  # abort the session; nothing will be saved
-        return response.text
-
-    def _set_busy(self, busy):
-        # rumps 0.4.0 exposes no enabled API for menu items; use the wrapped NSMenuItem.
-        for item in (self.start_item, self.recent_item, self.stats_item,
-                     self.help_item, self.clear_item):
+    def _update_menu(self):
+        busy = self._window.has_pending_work
+        self.start_item.title = "Return to Workout" if busy else "Start Workout"
+        self.detail_item.title = template_description(self._store.last_template())
+        # rumps exposes the underlying NSMenuItem for enabled-state control.
+        for item in (self.custom_item, self.history_item):
             item._menuitem.setEnabled_(not busy)
 
     @_guarded
-    def show_recent(self, _sender):
-        sessions = self._store.recent_sessions(limit=5)
-        if not sessions:
-            _alert("Recent Sessions", "No sessions stored yet. Start a workout!")
-            return
-        lines = [
-            "#{0:<3} {1:<13} {2:<7} {3:.0f}s".format(
-                session.id, _format_time(session.finished_at),
-                "{0}/{1}".format(session.correct, session.completed_reps),
-                session.duration_sec)
-            for session in sessions
-        ]
-        _alert("Recent Sessions",
-               "Last {0} session(s):\n{1}\n{2}".format(len(sessions), _SEPARATOR, "\n".join(lines)))
+    def start_workout(self, _sender):
+        self._window.start(self._store.last_template())
 
     @_guarded
-    def show_stats(self, _sender):
-        totals = self._store.totals()
-        if totals["sessions"] == 0:
-            _alert("All-time Stats", "No sessions stored yet. Start a workout!")
-            return
-        _alert(
-            "All-time Stats",
-            "{0}\n{1:<12}{2}\n{3:<12}{4}  ({5} correct)\n{6:<12}{7:.1f}%".format(
-                _SEPARATOR,
-                "Sessions:", totals["sessions"],
-                "Reps:", totals["reps"], totals["correct"],
-                "Avg score:", totals["avg_score_pct"]),
-        )
+    def custom_workout(self, _sender):
+        self._window.show_setup()
+
+    @_guarded
+    def show_history(self, _sender):
+        self._window.show_history()
 
     @_guarded
     def show_help(self, _sender):
-        # Line widths are constrained: the informative field is ~220 pt and
-        # leading spaces are trimmed (verified by offscreen rendering).
-        _alert(
-            "Numbers Workout — Help",
-            "Template: {mode}-{types}-{reps}\n\n"
-            "s  simple · m  medium · h  hard\n"
-            "a  + · s  - · m  * · d  / · *  all\n\n"
-            "Examples\n"
-            "m-*-10   medium, 10 reps\n"
-            "s-a-5    simple +, 5 reps\n"
-            "h-m,d-20 hard * and /, 20 reps",
-        )
+        if self._help_window is None:
+            self._help_window = HelpWindow.alloc().init()
+        self._help_window.reveal()
 
     @_guarded
-    def clear_history(self, _sender):
-        count = self._store.totals()["sessions"]
-        if count == 0:
-            _alert("Clear History", "There is no history to clear.")
-            return
-        clicked = _alert(
-            "Clear History",
-            "Delete all {0} saved session(s)? This cannot be undone.".format(count),
-            cancel=True,
-        )
-        if clicked != _OK_BUTTON:
-            return
-        self._store.clear_history()
+    def quit_app(self, _sender):
+        self._window.request_quit(rumps.quit_application)
+
+    def run(self, **options):
+        # AppKit can terminate without returning from its event loop.
+        rumps.events.before_quit.register(self._store.close)
+        try:
+            super().run(**options)
+        finally:
+            rumps.events.before_quit.unregister(self._store.close)
+            self._store.close()
 
 
 def main():
-    NumbersWorkoutApp().run()
+    app = NumbersWorkoutApp()
+    if "--setup" in sys.argv:
+        # Useful for launching directly into setup, including local UI review.
+        rumps.events.before_start.register(lambda: app.custom_workout(None))
+    app.run()
 
 
 if __name__ == "__main__":

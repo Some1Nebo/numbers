@@ -1,4 +1,13 @@
-from utils import *
+"""Integer arithmetic exercises, stored as operands rather than executable text."""
+
+import operator
+import re
+
+from utils import (
+    get_randomly_placed_randoms_with_n_digits,
+    random_with_n_digits,
+    random_with_n_digits_from_range,
+)
 
 
 class Mode:
@@ -24,20 +33,33 @@ class RepType:
 
 class Rep:
 
-    def __init__(self, rep_str):
-        self._rep_str = rep_str
+    _OPERATIONS = {"+": operator.add, "-": operator.sub,
+                   "*": operator.mul, "/": operator.floordiv}
+    _DISPLAY_SYMBOLS = str.maketrans({"*": "×", "/": "÷", "-": "−"})
 
-        try:
-            # using 'eval' is quite a bad approach, but for my internal usage it's fine
-            self._answer = eval(rep_str)
-        except SyntaxError:
-            raise ValueError("Wrong format of the rep: {0}.".format(rep_str))
+    def __init__(self, left, operation=None, right=None):
+        # Retain the original Rep("10 * 2") API for callers and saved exercises.
+        if operation is None:
+            match = re.fullmatch(r"\s*([+-]?\d+)\s*([+*/-])\s*([+-]?\d+)\s*", str(left))
+            if match is None:
+                raise ValueError(f"Wrong format of the rep: {left}.")
+            left, operation, right = match.groups()
+            left, right = int(left), int(right)
+        if not isinstance(left, int) or not isinstance(right, int) or operation not in self._OPERATIONS:
+            raise ValueError("An exercise needs two integer operands and +, -, * or /.")
+        if operation == "/" and (right == 0 or left % right):
+            raise ValueError("Division exercises must have an exact integer answer.")
+        self.left, self.operation, self.right = left, operation, right
 
     def answer(self):
-        return self._answer
+        return self._OPERATIONS[self.operation](self.left, self.right)
 
     def __str__(self):
-        return self._rep_str
+        return f"{self.left} {self.operation} {self.right}"
+
+    @property
+    def display(self):
+        return str(self).translate(self._DISPLAY_SYMBOLS)
 
     @staticmethod
     def generate(mode, rep_type):
@@ -95,4 +117,4 @@ class Rep:
 
     @staticmethod
     def _gen_binary_rep(operands, operation):
-        return Rep("{1} {0} {2}".format(operation, operands[0], operands[1]))
+        return Rep(operands[0], operation, operands[1])

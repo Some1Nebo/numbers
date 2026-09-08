@@ -141,12 +141,13 @@ def duration_text(seconds):
 
 MODES = (("s", "Simple"), ("m", "Medium"), ("h", "Hard"))
 OPERATIONS = (("a", "+", "Addition"), ("s", "−", "Subtraction"),
-              ("m", "×", "Multiplication"), ("d", "÷", "Division"))
+              ("m", "×", "Multiplication"), ("d", "÷", "Division"),
+              ("p", "%", "Percentages"))
 
 
 def template_description(template):
     mode = dict(MODES)[template.mode()]
-    operations = "Mixed" if len(template.rep_types()) == 4 else " ".join(
+    operations = "Mixed" if template.rep_types() == {"a", "s", "m", "d"} else " ".join(
         symbol for key, symbol, _ in OPERATIONS if key in template.rep_types())
     count = template.num_of_reps()
     return f"{mode} · {operations} · {count} {'question' if count == 1 else 'questions'}"

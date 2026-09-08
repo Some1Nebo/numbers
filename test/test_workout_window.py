@@ -17,6 +17,30 @@ from workout_template import WorkoutTemplate
 @unittest.skipUnless(sys.platform == "darwin" and os.getenv("NUMBERS_UI_TESTS") == "1",
                      "AppKit checks run explicitly on a Mac with a graphical session")
 class WorkoutWindowTests(unittest.TestCase):
+    def test_percentage_selection_and_decimal_workout(self):
+        from percentage_rep import PercentageRep
+        self.controller.show_setup()
+        self.assertIn('p', self.controller.operation_buttons)
+        for control in self.controller.operation_buttons.values():
+            control.setState_(0)
+        self.controller.operation_buttons['p'].setState_(1)
+        self.controller.rep_count.setStringValue_('2')
+        reps = Workout([PercentageRep('of', 85, 17), PercentageRep('ratio', 1, 3)])
+        with patch('runner.Workout.generate', return_value=reps):
+            self.controller.startCustom_(None)
+        self.assertEqual(self.store.last_template().rep_types(), {'p'})
+        self.controller.answer.setStringValue_('NaN')
+        self.controller.submit_(None)
+        self.assertEqual(self.controller.session.completed, 0)
+        self.controller.answer.setStringValue_('14,45')
+        self.controller.submit_(None)
+        self.assertEqual(self.controller.session.completed, 1)
+        self.assertIn('two decimal places', self.controller.instruction.stringValue())
+        self.controller.answer.setStringValue_('33.333%')
+        self.controller.submit_(None)
+        self.assertEqual(self.controller.result.correct, 2)
+        self.assertTrue(self.controller.saved)
+
     def setUp(self):
         from AppKit import NSApplication
         from menubar import NumbersWorkoutApp

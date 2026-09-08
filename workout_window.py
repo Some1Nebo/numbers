@@ -110,7 +110,7 @@ class WorkoutWindow(A.NSObject):
         label(self.root, "Operations", 32, 241, 456, bold=True)
         self.operation_buttons = {}
         for index, (key, symbol, title) in enumerate(OPERATIONS):
-            control = button(self.root, symbol, self, "operationChanged:", 32 + index * 117, 268, 105, 40)
+            control = button(self.root, symbol, self, "operationChanged:", 32 + index * 93, 268, 84, 40)
             control.setButtonType_(A.NSButtonTypePushOnPushOff)
             control.setFont_(A.NSFont.systemFontOfSize_(22))
             control.setState_(1 if key in template.rep_types() else 0)
@@ -170,7 +170,8 @@ class WorkoutWindow(A.NSObject):
         self.progress.setMaxValue_(template.num_of_reps())
         self.progress.setAccessibilityLabel_("Workout progress")
         self.root.addSubview_(self.progress)
-        self.expression = label(self.root, "", 24, 175, 472, 68, size=48, bold=True, center=True)
+        self.expression = label(self.root, "", 32, 145, 456, 110, size=48, bold=True, center=True)
+        self.instruction = label(self.root, "", 32, 252, 456, 30, size=12, secondary=True, center=True)
         card(self.root, 100, 283, 320, 68)
         self.answer = A.NSTextField.alloc().initWithFrame_(frame(self.root, 116, 296, 288, 46))
         self.answer.setFont_(A.NSFont.monospacedDigitSystemFontOfSize_weight_(30, A.NSFontWeightRegular))
@@ -193,7 +194,12 @@ class WorkoutWindow(A.NSObject):
 
     @objc.python_method
     def _show_question(self):
-        self.expression.setStringValue_(self.session.current_rep.display)
+        rep = self.session.current_rep
+        self.expression.setStringValue_(rep.display)
+        self.expression.setFont_(A.NSFont.systemFontOfSize_weight_(
+            26 if len(rep.display) > 22 else 40 if len(rep.display) > 14 else 48,
+            A.NSFontWeightSemibold))
+        self.instruction.setStringValue_(rep.instruction)
         count, total = self.session.completed, self.session.template.num_of_reps()
         self.progress_label.setStringValue_(f"{count + 1} of {total}")
         self.progress.setDoubleValue_(count)
@@ -208,9 +214,9 @@ class WorkoutWindow(A.NSObject):
             return
         answer = self.answer.stringValue().strip().replace("−", "-")
         try:
-            int(answer)
+            self.session.current_rep.parse_answer(answer)
         except ValueError:
-            self.show_error("Enter a whole number, such as 42 or −7.")
+            self.show_error(self.session.current_rep.input_error)
             self.window.makeFirstResponder_(self.answer)
             return
         self.session.submit(answer)
@@ -271,10 +277,10 @@ class WorkoutWindow(A.NSObject):
                     if not matches_answer(rep, answer)]
         if mistakes:
             label(self.root, "A second look", 32, 265, 456, bold=True)
-            document = scroll_content(self.root, 298, 165 if self.saved else 120, len(mistakes) * 65)
+            document = scroll_content(self.root, 298, 165 if self.saved else 120, len(mistakes) * 100)
             for index, (rep, answer) in enumerate(mistakes):
-                label(document, f"{rep.display} = {rep.answer()}", 0, index * 65, 428, 28, size=18)
-                label(document, f"Your answer: {answer}", 0, index * 65 + 29, 428, size=13, secondary=True)
+                label(document, f"{rep.display} → {rep.answer_text}", 0, index * 100, 428, 65, size=18)
+                label(document, f"Your answer: {answer}", 0, index * 100 + 66, 428, size=13, secondary=True)
         else:
             label(self.root, "Every answer correct.", 32, 305, 456, 30, size=18, bold=True)
             label(self.root, "You're all done for now—or ready for another round.",

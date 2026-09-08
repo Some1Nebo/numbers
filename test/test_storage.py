@@ -11,6 +11,22 @@ from workout_template import WorkoutTemplate
 
 class SessionStoreTests(unittest.TestCase):
 
+    def test_mixed_decimal_answers_persist_and_reopen(self):
+        from percentage_rep import PercentageRep
+        from rep import Rep
+        from runner import WorkoutSession
+        from workout import Workout
+        session = WorkoutSession(WorkoutTemplate.parse('m-a,p-3'), Workout([
+            Rep('10 + 2'), PercentageRep('of', 85, 17), PercentageRep('ratio', 1, 3)]))
+        for answer in ('12', '14,45', '33.333%'):
+            session.submit(answer)
+        self._store.record_session(session.finish())
+        with closing(SessionStore(os.path.join(self._tmp.name, 'test.db'))) as reopened:
+            self.assertEqual(reopened.totals()['correct'], 3)
+            rows = reopened._conn.execute(
+                'SELECT correct_answer, was_correct FROM session_reps ORDER BY seq').fetchall()
+            self.assertEqual(rows, [(12, 1), (14.45, 1), (33.33, 1)])
+
     def test_legacy_database_keeps_existing_history_when_preferences_are_added(self):
         path = os.path.join(self._tmp.name, "legacy.db")
         # The original two-table schema, before remembered workout preferences.

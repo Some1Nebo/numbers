@@ -21,6 +21,7 @@ import rumps
 
 from menubar import NumbersWorkoutApp
 from rep import Rep
+from percentage_rep import PercentageRep
 from runner import SessionResult
 from workout import Workout
 from workout_template import WorkoutTemplate
@@ -29,7 +30,7 @@ from workout_template import WorkoutTemplate
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--appearance", choices=("light", "dark"), default="dark")
-    parser.add_argument("--scene", choices=("setup", "workout", "results", "history", "help"), default="setup")
+    parser.add_argument("--scene", choices=("setup", "workout", "results", "history", "help", "percentage"), default="setup")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="numbers-ui-preview-") as directory:
         os.environ["NUMBERS_WORKOUT_HOME"] = directory
@@ -44,6 +45,12 @@ def main():
                 app._help_window.window.setAppearance_(A.NSAppearance.appearanceNamed_(name))
             elif args.scene == "setup":
                 controller.show_setup()
+            elif args.scene == "percentage":
+                from unittest.mock import patch
+                reps = Workout([PercentageRep('reverse_decrease', 264, 17.5),
+                                PercentageRep('ratio', 1, 3)])
+                with patch('runner.Workout.generate', return_value=reps):
+                    controller.start(WorkoutTemplate.parse('h-p-2'))
             elif args.scene == "workout":
                 controller.start(WorkoutTemplate.parse("m-*-10"))
             else:

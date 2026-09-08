@@ -125,7 +125,7 @@ class SessionStore:
                    (session_id, seq, rep, given_answer, correct_answer, was_correct)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 [
-                    (session_id, i, str(rep), answer, rep.answer(), int(matches_answer(rep, answer)))
+                    (session_id, i, str(rep), answer, str(rep.answer()), int(matches_answer(rep, answer)))
                     for i, (rep, answer) in enumerate(zip(reps, result.answers), start=1)
                 ],
             )

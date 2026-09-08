@@ -101,8 +101,8 @@ def run_workout(template, ask_answer):
 
 
 def matches_answer(rep, answer):
-    """True if the raw user answer is an integer equal to the rep's answer."""
+    """Check using the exercise's numeric and rounding convention."""
     try:
-        return int(answer) == rep.answer()
+        return rep.matches_answer(answer)
     except (TypeError, ValueError):
         return False

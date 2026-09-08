@@ -19,8 +19,8 @@ class HelpWindow(A.NSObject):
         sections = (
             ("Make it yours", "Start Workout repeats your last settings. Use Custom Workout "
              "to choose difficulty, operations and length."),
-            ("Take your time", "Type a whole-number answer and press Return. Your score, "
-             "corrections and elapsed time appear at the end."),
+            ("Take your time", "Type your answer and press Return. Follow the rounding "
+             "instruction when shown. Your score and corrections appear at the end."),
             ("Your workout history", "Completed workouts are saved on this Mac. Find them "
              "in History. Unfinished workouts aren't saved."),
         )

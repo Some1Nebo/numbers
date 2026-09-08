@@ -59,7 +59,8 @@ class WorkoutTemplate:
 
         if WorkoutTemplate.WILDCARD in rep_types:
             rep_types.remove(WorkoutTemplate.WILDCARD)
-            rep_types.update(RepType.all())
+            # Keep historical '*' templates and saved defaults arithmetic-only.
+            rep_types.update(RepType.arithmetic())
 
         if not all(rep in RepType.all() for rep in rep_types):
             raise ValueError("Unknown reps provided.")

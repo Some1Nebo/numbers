@@ -1,7 +1,7 @@
 # Numbers Workout
 
 A little mental gymnastics: short sessions of random arithmetic questions
-(addition, subtraction, multiplication, division) in three difficulty modes.
+(addition, subtraction, multiplication, division and percentages) in three difficulty modes.
 
 Two front-ends share the same core (`runner.py`) and save completed workouts
 to a local SQLite database:
@@ -14,10 +14,10 @@ to a local SQLite database:
 ## Using the Mac app
 
 - **Start Workout** starts immediately with your last settings (initially medium,
-  all operations, 10 questions). During a workout this becomes **Return to Workout**.
+  the four arithmetic operations, 10 questions). During a workout this becomes **Return to Workout**.
 - **Custom Workout…** opens native difficulty and operation controls and an editable
   question count (1–1,000). Your choices are remembered when you start.
-- One window stays in place for the whole workout. Type an integer and press
+- One window stays in place for the whole workout. Type your answer and press
   **Return** or click **Next**. Negative answers are supported. Standard Mac
   selection, copy, paste, and undo shortcuts work in text fields.
 - There is no correctness feedback or running timer during the workout. Results
@@ -25,7 +25,7 @@ to a local SQLite database:
 - **Do Another** starts a fresh workout with the same settings. **Done** closes the
   window; the app stays in the menu bar.
 - **Help** opens a matching native window without interrupting an active workout.
-- **History…** shows all-time counts and the latest 30 sessions. **Clear History…**
+- **History…** shows all-time counts, question-weighted overall and last-20-workout accuracy, and the latest 30 sessions. **Clear History…**
   lives inside that window and requires confirmation; workout settings are retained.
 - Ending an unfinished workout requires confirmation and does not save it.
   A failed save keeps completed results available for retry.
@@ -46,11 +46,32 @@ To launch directly into setup from source:
 `{mode}-{rep_types}-{num_of_reps}`, e.g. `m-*-10`:
 
 - mode: `s` simple, `m` medium, `h` hard
-- rep_types: `a` addition, `s` subtraction, `m` multiplication, `d` division, `*` all
-  (comma-separated, e.g. `a,m`)
+- rep_types: `a` addition, `s` subtraction, `m` multiplication, `d` division, `p` percentages.
+  `*` retains its original meaning: the four arithmetic operations. Use `*,p` for all five
+  (comma-separated, e.g. `a,m,p`).
 - num_of_reps: integer
 
 Default: `m-*-10`.
+
+## Percentage workouts
+
+Select **%** alone or alongside other operations in Custom Workout. In the console,
+use `s-p-10` for percentages alone or `m-*,p-10` for all five operations.
+
+- **Simple:** familiar rates (1%, 5%, 10%, 20%, 25%, 50%) and whole-number answers.
+- **Medium:** combine familiar rates (including 12.5%, 15% and 75%), with tidy decimals.
+- **Hard:** less convenient rates and reverse increases/decreases with manageable numbers.
+
+Questions cover percentage of a number, increase/decrease and “what percentage?”.
+Reverse questions ask for the original value after a percentage change.
+Percentage answers accept a decimal point or comma. When the question asks for a
+percentage, the `%` suffix is optional: enter `25` or `25%`, not `0.25`.
+Ordinary arithmetic still uses whole-number answers.
+
+When necessary, the question explicitly asks for two decimal places, with 5 rounding
+up. Extra decimal digits are accepted if they round to that same answer. Otherwise,
+answers must match exactly. Corrections use the same convention. There is still no
+correctness feedback during a workout.
 
 ## Storage
 
@@ -131,12 +152,13 @@ appearance changes):
 .venv/bin/python test/preview_ui.py --appearance dark --scene setup
 ```
 
-Scenes: `setup`, `workout`, `results`, `history`, `help`. Results include 20 deliberately
+Scenes: `setup`, `workout`, `results`, `history`, `help`, `percentage`. Results include 20 deliberately
 incorrect answers for checking the scrollable review.
 
 ## Layout
 
 - `rep.py` — structured integer arithmetic and generation per mode/type; no `eval`
+- `percentage_rep.py` — percentage prompts, controlled generation and decimal answer checking
 - `workout_template.py` — template parsing
 - `workout.py` — workout (list of reps) generation
 - `runner.py` — event-driven `WorkoutSession`, `SessionResult`, and synchronous console adapter

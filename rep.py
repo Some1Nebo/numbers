@@ -21,6 +21,7 @@ class Mode:
 
 
 class RepType:
+    PERCENTAGE = "p"
     ADDITION = "a"
     SUBTRACTION = "s"
     MULTIPLICATION = "m"
@@ -28,6 +29,10 @@ class RepType:
 
     @staticmethod
     def all():
+        return RepType.arithmetic() | {RepType.PERCENTAGE}
+
+    @staticmethod
+    def arithmetic():
         return {RepType.ADDITION, RepType.SUBTRACTION, RepType.MULTIPLICATION, RepType.DIVISION}
 
 
@@ -54,6 +59,19 @@ class Rep:
     def answer(self):
         return self._OPERATIONS[self.operation](self.left, self.right)
 
+    instruction = "Enter a whole number."
+    input_error = "Enter a whole number, such as 42 or −7."
+
+    @property
+    def answer_text(self):
+        return str(self.answer())
+
+    def parse_answer(self, answer):
+        return int(answer)
+
+    def matches_answer(self, answer):
+        return self.parse_answer(answer) == self.answer()
+
     def __str__(self):
         return f"{self.left} {self.operation} {self.right}"
 
@@ -63,6 +81,9 @@ class Rep:
 
     @staticmethod
     def generate(mode, rep_type):
+        if rep_type == RepType.PERCENTAGE:
+            from percentage_rep import PercentageRep
+            return PercentageRep.generate(mode)
         generators = Rep._prepare_generators()
         generator = generators[rep_type]
         return generator(mode)

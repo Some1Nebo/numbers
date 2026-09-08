@@ -157,19 +157,27 @@ class SessionStore:
         ).fetchall()
         return [SessionSummary(*row) for row in rows]
 
-    def totals(self):
+    def totals(self, limit=None):
+        """Aggregate all workouts, or the latest ``limit`` workouts.
+
+        Accuracy weights each answered question equally. No answers means
+        accuracy is unavailable, rather than zero percent correct.
+        """
         row = self._conn.execute(
             """SELECT COUNT(*),
                       COALESCE(SUM(correct), 0),
                       COALESCE(SUM(completed_reps), 0),
                       COALESCE(AVG(score_pct), 0)
-               FROM sessions"""
+               FROM (SELECT correct, completed_reps, score_pct FROM sessions
+                     ORDER BY id DESC LIMIT ?)""",
+            (-1 if limit is None else limit,),
         ).fetchone()
         return {
             "sessions": row[0],
             "correct": row[1],
             "reps": row[2],
             "avg_score_pct": row[3],
+            "accuracy_pct": row[1] * 100.0 / row[2] if row[2] else None,
         }
 
     def close(self):

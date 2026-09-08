@@ -148,6 +148,30 @@ class SessionStoreTests(unittest.TestCase):
         self.assertEqual(len(self._store.recent_sessions(limit=5)), 0)
         self.assertEqual(self._store.totals()["sessions"], 0)
 
+    def test_accuracy_weights_questions_and_limits_to_latest_workouts(self):
+        self._record("s-a-50", ask=lambda i, rep: "wrong")
+        for _ in range(19):
+            self._record("s-a-1")
+        self._record("s-a-5", ask=lambda i, rep: "wrong")
+
+        overall = self._store.totals()
+        self.assertAlmostEqual(overall.get("accuracy_pct", -1), 19 / 74 * 100)
+        recent = self._store.totals(limit=20)
+        self.assertEqual(recent["sessions"], 20)
+        self.assertEqual(recent["reps"], 24)
+        self.assertAlmostEqual(recent["accuracy_pct"], 19 / 24 * 100)
+
+    def test_accuracy_without_answers_is_unavailable(self):
+        self.assertIsNone(self._store.totals().get("accuracy_pct", -1))
+        self._record("s-a-1", ask=lambda i, rep: None)
+        self.assertIsNone(self._store.totals(limit=20)["accuracy_pct"])
+
+    def test_recent_totals_count_only_available_workouts(self):
+        self._record("s-a-2")
+        recent = self._store.totals(limit=20)
+        self.assertEqual(recent["sessions"], 1)
+        self.assertEqual(recent["accuracy_pct"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()

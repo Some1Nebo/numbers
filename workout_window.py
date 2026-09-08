@@ -373,8 +373,16 @@ class WorkoutWindow(A.NSObject):
             label(self.root, "Your completed workouts will appear here.", 32, 258, 456,
                   secondary=True, center=True)
         else:
-            label(self.root, "Recent sessions", 32, 159, 456, bold=True)
-            document = scroll_content(self.root, 196, 224, len(sessions) * 78)
+            recent = self.store.totals(limit=20)
+            recent_word = "workout" if recent["sessions"] == 1 else "workouts"
+            for top, title, summary in (
+                    (140, "Overall accuracy", totals),
+                    (166, f"Last {recent['sessions']} {recent_word}", recent)):
+                accuracy = summary["accuracy_pct"]
+                value = "—" if accuracy is None else f"{accuracy:.1f}%"
+                label(self.root, f"{title} · {value}", 32, top, 456)
+            label(self.root, "Recent sessions", 32, 210, 456, bold=True)
+            document = scroll_content(self.root, 244, 176, len(sessions) * 78)
             for index, session in enumerate(sessions):
                 try:
                     timestamp = datetime.fromisoformat(session.finished_at).strftime("%d %b · %H:%M")
